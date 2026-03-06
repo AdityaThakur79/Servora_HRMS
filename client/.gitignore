@@ -1,7 +1,6 @@
 # Client-specific ignores
 
 node_modules/
-dist/
 *.log
 
 .env

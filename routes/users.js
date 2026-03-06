@@ -6,9 +6,9 @@ const { protect, authorize } = require('../middleware/auth');
 
 router.use(protect);
 
-// GET all team members (admin/manager only)
-router.get('/', authorize('admin', 'manager'), asyncHandler(async (req, res) => {
-    const users = await User.find().sort({ createdAt: -1 });
+// GET all team members (any authenticated user can see team list)
+router.get('/', asyncHandler(async (req, res) => {
+    const users = await User.find().sort({ createdAt: -1 }).select('-password');
     res.json(users);
 }));
 

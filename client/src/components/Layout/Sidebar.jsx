@@ -48,7 +48,7 @@ function Sidebar() {
 
             const roleAllowed = !item.roles || item.roles.includes(role);
             const jobAllowed = !item.jobTitles || item.jobTitles.includes(jobTitle);
-            if (!roleAllowed && !jobAllowed) continue;
+            if (!roleAllowed || !jobAllowed) continue;
             out.push(item);
             if (pendingDividerIndex !== -1) hasLinkSinceDivider = true;
         }

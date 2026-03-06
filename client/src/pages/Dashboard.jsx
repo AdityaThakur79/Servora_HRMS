@@ -2,9 +2,11 @@ import { useEffect, useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
     HiOutlineUsers, HiOutlineBriefcase, HiOutlineClipboardList,
-    HiOutlineDocumentText, HiOutlineTicket, HiOutlineCurrencyDollar
+    HiOutlineDocumentText, HiOutlineTicket, HiOutlineCurrencyDollar,
+    HiOutlineClock
 } from 'react-icons/hi';
 import api from '../utils/api';
+import toast from 'react-hot-toast';
 import useAuthStore from '../store/authStore';
 import { format } from 'date-fns';
 
@@ -37,6 +39,9 @@ function Dashboard() {
     const [stats, setStats] = useState(null);
     const [myTasks, setMyTasks] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [hrmsToday, setHrmsToday] = useState(null);
+    const [checkInPopupDismissed, setCheckInPopupDismissed] = useState(false);
+    const [checkingIn, setCheckingIn] = useState(false);
     const { user } = useAuthStore();
 
     const isAdmin = user?.role === 'admin';
@@ -50,11 +55,32 @@ function Dashboard() {
                 .then(res => { setStats(res.data); setLoading(false); })
                 .catch(() => setLoading(false));
         } else {
-            api.get(`/tasks?assignedTo=${user._id}`)
-                .then(res => { setMyTasks(res.data); setLoading(false); })
+            Promise.all([
+                api.get(`/tasks?assignedTo=${user._id}`),
+                api.get('/hrms/today').catch(() => ({ data: null })),
+            ])
+                .then(([tasksRes, hrmsRes]) => {
+                    setMyTasks(tasksRes.data?.tasks ?? tasksRes.data ?? []);
+                    setHrmsToday(hrmsRes.data);
+                    setLoading(false);
+                })
                 .catch(() => setLoading(false));
         }
     }, [isAdmin, user]);
+
+    const handleCheckIn = () => {
+        setCheckingIn(true);
+        api.post('/hrms/check-in')
+            .then(() => {
+                setHrmsToday((prev) => (prev ? { ...prev, checkInAt: new Date().toISOString(), checkOutAt: null } : null));
+                setCheckInPopupDismissed(true);
+                toast.success('Checked in');
+            })
+            .catch(() => toast.error('Could not check in'))
+            .finally(() => setCheckingIn(false));
+    };
+
+    const showCheckInPopup = !isAdmin && !checkInPopupDismissed && hrmsToday && !hrmsToday.checkInAt;
 
     const hour = new Date().getHours();
     const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
@@ -188,6 +214,40 @@ function Dashboard() {
     // Member dashboard – focused on today's and pending tasks
     return (
         <div className="fade-in">
+            {showCheckInPopup && (
+                <div
+                    className="card"
+                    style={{
+                        marginBottom: 24,
+                        background: 'linear-gradient(135deg, var(--accent-glow) 0%, var(--card) 100%)',
+                        border: '1px solid var(--border-color)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        flexWrap: 'wrap',
+                        gap: 16,
+                        padding: '16px 20px',
+                    }}
+                >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div style={{ width: 44, height: 44, borderRadius: 12, background: 'var(--accent-primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <HiOutlineClock size={24} />
+                        </div>
+                        <div>
+                            <div style={{ fontWeight: 700, fontSize: 16 }}>Start your day</div>
+                            <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>Check in to log your work hours</div>
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 10 }}>
+                        <button className="btn btn-ghost btn-sm" onClick={() => setCheckInPopupDismissed(true)}>
+                            Later
+                        </button>
+                        <button className="btn btn-primary" onClick={handleCheckIn} disabled={checkingIn}>
+                            {checkingIn ? 'Checking in...' : 'Check in'}
+                        </button>
+                    </div>
+                </div>
+            )}
             <div style={{ marginBottom: 24 }}>
                 <h2 style={{ fontSize: 26, fontWeight: 800 }}>
                     {greeting}, {user?.name?.split(' ')[0]} 👋

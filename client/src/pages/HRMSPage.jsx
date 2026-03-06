@@ -7,9 +7,6 @@ export default function HRMSPage() {
     const [loading, setLoading] = useState(true);
     const [projects, setProjects] = useState([]);
     const [ts, setTs] = useState(null);
-    const [note, setNote] = useState('');
-    const [project, setProject] = useState('');
-    const [taskText, setTaskText] = useState('');
     const [saving, setSaving] = useState(false);
     const [now, setNow] = useState(Date.now());
     const [day, setDay] = useState(() => {
@@ -111,26 +108,6 @@ export default function HRMSPage() {
         }
     };
 
-    const addOneHour = async () => {
-        if (!checkedIn) return toast.error('Check in first');
-        setSaving(true);
-        try {
-            const res = await api.post('/hrms/work-blocks/one-hour', {
-                project: project || undefined,
-                taskText,
-                note,
-            });
-            setTs(res.data);
-            setNote('');
-            setTaskText('');
-            toast.success('Added 1 hour');
-        } catch (err) {
-            toast.error(err.response?.data?.message || 'Unable to add work');
-        } finally {
-            setSaving(false);
-        }
-    };
-
     const roundDownHour = (d) => {
         const x = new Date(d);
         x.setMinutes(0, 0, 0);
@@ -196,6 +173,13 @@ export default function HRMSPage() {
         } finally {
             setSaving(false);
         }
+    };
+
+    const projectLabel = (p) => {
+        if (!p) return '';
+        const name = p.name || '';
+        const clientName = p.client?.name || '';
+        return clientName ? `${name} \u2013 ${clientName}` : name;
     };
 
     const generateMonthlyReport = async () => {
@@ -281,46 +265,7 @@ export default function HRMSPage() {
                 <Stat label="Check-out" value={ts?.checkOutAt ? new Date(ts.checkOutAt).toLocaleTimeString() : '—'} />
             </div>
 
-            <div className="grid-2">
-                <div className="card">
-                    <div className="card-header">
-                        <h3 className="card-title">Log work</h3>
-                    </div>
-
-                    <div className="form-group">
-                        <label className="form-label">Project (optional)</label>
-                        <select className="form-select" value={project} onChange={(e) => setProject(e.target.value)}>
-                            <option value="">No project</option>
-                            {projects.map((p) => (
-                                <option key={p._id} value={p._id}>
-                                    {p.name}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="form-group">
-                        <label className="form-label">Task</label>
-                        <input className="form-input" value={taskText} onChange={(e) => setTaskText(e.target.value)} placeholder="What task did you do?" />
-                    </div>
-
-                    <div className="form-group">
-                        <label className="form-label">Work note</label>
-                        <textarea className="form-textarea" rows={3} value={note} onChange={(e) => setNote(e.target.value)} placeholder="What did you work on?" />
-                    </div>
-
-                    <button className="btn btn-primary" onClick={addOneHour} disabled={saving || !checkedIn}>
-                        {saving ? 'Saving...' : 'Add 1 hour'}
-                    </button>
-
-                    {!checkedIn && (
-                        <p style={{ marginTop: 10, color: 'var(--text-muted)', fontSize: 12 }}>
-                            You must check in before logging work.
-                        </p>
-                    )}
-                </div>
-
-                <div className="card">
+            <div className="card" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
                     <div className="card-header">
                         <h3 className="card-title">Timeline</h3>
                     </div>
@@ -371,7 +316,7 @@ export default function HRMSPage() {
                                                 >
                                                     <option value="">No project</option>
                                                     {projects.map((p) => (
-                                                        <option key={p._id} value={p._id}>{p.name}</option>
+                                                        <option key={p._id} value={p._id}>{projectLabel(p)}</option>
                                                     ))}
                                                 </select>
                                             </div>
@@ -403,10 +348,9 @@ export default function HRMSPage() {
                         </div>
                     )}
                 </div>
-            </div>
 
             {canViewReports && (
-                <div className="card" style={{ marginTop: 16 }}>
+                <div className="card" style={{ marginTop: 16, maxHeight: '60vh', overflowY: 'auto' }}>
                     <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
                         <h3 className="card-title">Monthly report</h3>
                         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>

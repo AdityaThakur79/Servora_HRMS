@@ -24,7 +24,7 @@ const navLinks = [
     { to: '/settings', icon: <HiOutlineCog />, label: 'Settings' },
 ];
 
-function Sidebar() {
+function Sidebar({ isOpen, onClose }) {
     const { user, logout } = useAuthStore();
     const navigate = useNavigate();
     const role = user?.role || 'staff';
@@ -62,6 +62,7 @@ function Sidebar() {
     const handleLogout = () => {
         logout();
         navigate('/login');
+        if (onClose) onClose();
     };
 
     const initials = user?.name
@@ -69,7 +70,7 @@ function Sidebar() {
         : 'SV';
 
     return (
-        <aside className="sidebar">
+        <aside className={`sidebar ${isOpen ? 'sidebar-open' : ''}`}>
             <div className="sidebar-logo">
                 <img src="/logo.png" alt="Servora Logo" className="logo-icon" />
                 <span className="logo-text">Servora</span>
@@ -86,6 +87,7 @@ function Sidebar() {
                             to={item.to}
                             end={item.to === '/'}
                             className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                            onClick={onClose}
                         >
                             <span className="nav-icon">{item.icon}</span>
                             {item.label}

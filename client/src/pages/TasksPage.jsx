@@ -116,6 +116,12 @@ export default function TasksPage() {
         }
     };
 
+    const projectLabel = (p) => {
+        const name = p?.name || '';
+        const clientName = p?.client?.name || '';
+        return clientName ? `${name} – ${clientName}` : name;
+    };
+
     return (
         <div className="fade-in">
             <div className="page-header">
@@ -155,7 +161,7 @@ export default function TasksPage() {
                             ) : filtered.map(t => (
                                 <tr key={t._id}>
                                     <td><span style={{ fontWeight: 600 }}>{t.title}</span></td>
-                                    <td style={{ color: 'var(--text-secondary)' }}>{t.project?.name || '—'}</td>
+                                    <td style={{ color: 'var(--text-secondary)' }}>{t.project ? projectLabel(t.project) : '—'}</td>
                                     <td>
                                         {t.assignedTo ? (
                                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -229,7 +235,11 @@ export default function TasksPage() {
                                         <label className="form-label">Project *</label>
                                         <select className="form-select" value={form.project} onChange={e => setForm({ ...form, project: e.target.value })} required>
                                             <option value="">Select project</option>
-                                            {projects.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+                                            {projects.map(p => (
+                                                <option key={p._id} value={p._id}>
+                                                    {projectLabel(p)}
+                                                </option>
+                                            ))}
                                         </select>
                                     </div>
                                     <div className="form-group">

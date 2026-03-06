@@ -1,4 +1,4 @@
-import { HiOutlineBell, HiOutlineSearch } from 'react-icons/hi';
+import { HiOutlineBell, HiOutlineSearch, HiOutlineMenuAlt2 } from 'react-icons/hi';
 import { useLocation } from 'react-router-dom';
 
 const titles = {
@@ -12,7 +12,7 @@ const titles = {
     '/settings': { title: 'Settings', sub: 'Account and system preferences' },
 };
 
-function Navbar() {
+function Navbar({ onToggleSidebar }) {
     const { pathname } = useLocation();
     const page = titles[pathname] || { title: 'Servora', sub: '' };
     const now = new Date();
@@ -21,8 +21,18 @@ function Navbar() {
     return (
         <header className="navbar">
             <div className="navbar-left">
-                <h1>{page.title}</h1>
-                <p>{page.sub} · {dateStr}</p>
+                <button
+                    className="btn btn-ghost btn-icon navbar-menu"
+                    type="button"
+                    aria-label="Toggle navigation"
+                    onClick={onToggleSidebar}
+                >
+                    <HiOutlineMenuAlt2 size={20} />
+                </button>
+                <div className="navbar-title">
+                    <h1>{page.title}</h1>
+                    <p>{page.sub} · {dateStr}</p>
+                </div>
             </div>
             <div className="navbar-right">
                 <button className="btn btn-ghost btn-icon" title="Notifications">

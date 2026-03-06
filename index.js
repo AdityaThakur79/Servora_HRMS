@@ -36,12 +36,12 @@ app.get('/api/health', (req, res) => res.json({ status: 'OK', message: 'Servora 
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Serve React build (client/dist) in production
-app.use(express.static(path.join(__dirname, '../client/dist')));
+app.use(express.static(path.join(__dirname, './client/dist')));
 
 // SPA fallback – send index.html for non-API routes
 app.get('*', (req, res, next) => {
     if (req.path.startsWith('/api/')) return next();
-    res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+    res.sendFile(path.join(__dirname, './client/dist/index.html'));
 });
 
 // Error handler (must be last)

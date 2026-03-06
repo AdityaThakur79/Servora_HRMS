@@ -1,0 +1,15 @@
+# Client-specific ignores
+
+node_modules/
+dist/
+*.log
+
+.env
+.env.local
+.env.development.local
+.env.production.local
+.env.test.local
+
+.DS_Store
+.vscode/
+

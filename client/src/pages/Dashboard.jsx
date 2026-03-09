@@ -42,6 +42,8 @@ function Dashboard() {
     const [hrmsToday, setHrmsToday] = useState(null);
     const [checkInPopupDismissed, setCheckInPopupDismissed] = useState(false);
     const [checkingIn, setCheckingIn] = useState(false);
+    const [notCheckedOut, setNotCheckedOut] = useState([]);
+    const [teamTasksToday, setTeamTasksToday] = useState([]);
     const { user } = useAuthStore();
 
     const isAdmin = user?.role === 'admin';
@@ -51,8 +53,17 @@ function Dashboard() {
         setLoading(true);
 
         if (isAdmin) {
-            api.get('/dashboard/stats')
-                .then(res => { setStats(res.data); setLoading(false); })
+            Promise.all([
+                api.get('/dashboard/stats'),
+                api.get('/hrms/not-checked-out').catch(() => ({ data: [] })),
+                api.get('/hrms/team-tasks-today').catch(() => ({ data: [] }))
+            ])
+                .then(([statsRes, notCheckedOutRes, teamTasksRes]) => {
+                    setStats(statsRes.data);
+                    setNotCheckedOut(notCheckedOutRes.data);
+                    setTeamTasksToday(teamTasksRes.data);
+                    setLoading(false);
+                })
                 .catch(() => setLoading(false));
         } else {
             Promise.all([
@@ -69,15 +80,46 @@ function Dashboard() {
     }, [isAdmin, user]);
 
     const handleCheckIn = () => {
+        if (!navigator.geolocation) {
+            return toast.error('Geolocation is not supported by your browser');
+        }
+
         setCheckingIn(true);
-        api.post('/hrms/check-in')
-            .then(() => {
-                setHrmsToday((prev) => (prev ? { ...prev, checkInAt: new Date().toISOString(), checkOutAt: null } : null));
-                setCheckInPopupDismissed(true);
-                toast.success('Checked in');
-            })
-            .catch(() => toast.error('Could not check in'))
-            .finally(() => setCheckingIn(false));
+        
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                try {
+                    await api.post('/hrms/check-in', {
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude
+                    });
+                    setHrmsToday((prev) => (prev ? { ...prev, checkInAt: new Date().toISOString(), checkOutAt: null } : null));
+                    setCheckInPopupDismissed(true);
+                    toast.success('Checked in successfully');
+                } catch (err) {
+                    toast.error(err.response?.data?.message || 'Could not check in');
+                } finally {
+                    setCheckingIn(false);
+                }
+            },
+            (error) => {
+                setCheckingIn(false);
+                let errorMessage = 'Unable to get your location';
+                if (error.code === error.PERMISSION_DENIED) {
+                    errorMessage = 'Location permission denied. Please enable location access.';
+                } else if (error.code === error.POSITION_UNAVAILABLE) {
+                    errorMessage = 'Location information unavailable';
+                } else if (error.code === error.TIMEOUT) {
+                    errorMessage = 'Location request timed out';
+                }
+                toast.error(errorMessage);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            }
+        );
     };
 
     const showCheckInPopup = !isAdmin && !checkInPopupDismissed && hrmsToday && !hrmsToday.checkInAt;
@@ -207,6 +249,88 @@ function Dashboard() {
                         )}
                     </div>
                 </div>
+
+                {/* Not Checked Out */}
+                {notCheckedOut.length > 0 && (
+                    <div className="card" style={{ marginTop: 24 }}>
+                        <div className="card-header">
+                            <h3 className="card-title">Not Checked Out</h3>
+                            <span className="badge badge-orange">{notCheckedOut.length}</span>
+                        </div>
+                        <div>
+                            {notCheckedOut.map(item => (
+                                <div key={item.user._id} className="flex-between" style={{ padding: '10px 0', borderBottom: '1px solid var(--border-color)' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                        <div className="user-avatar" style={{ width: 32, height: 32, fontSize: 12 }}>
+                                            {item.user.name[0].toUpperCase()}
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: 14, fontWeight: 600 }}>{item.user.name}</div>
+                                            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                                                {item.user.jobTitle || item.user.email}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div style={{ textAlign: 'right' }}>
+                                        <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                                            Checked in: {new Date(item.checkInAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                                        </div>
+                                        <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                                            Logged: {Math.floor(item.workedMinutes / 60)}h {item.workedMinutes % 60}m
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Team Tasks Today */}
+                {teamTasksToday.length > 0 && (
+                    <div className="card" style={{ marginTop: 24 }}>
+                        <div className="card-header">
+                            <h3 className="card-title">Team Tasks Today</h3>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16, padding: 16 }}>
+                            {teamTasksToday.map(member => (
+                                <div key={member.user._id} style={{ border: '1px solid var(--border-color)', borderRadius: 12, padding: 14 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                                        <div className="user-avatar" style={{ width: 36, height: 36, fontSize: 13 }}>
+                                            {member.user.name[0].toUpperCase()}
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: 14, fontWeight: 700 }}>{member.user.name}</div>
+                                            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                                {member.user.jobTitle || 'Team Member'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {member.tasks.length > 0 ? (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                                            {member.tasks.map(task => (
+                                                <div key={task._id} style={{ padding: 8, background: 'var(--card)', borderRadius: 8, border: '1px solid var(--border-color)' }}>
+                                                    <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 4 }}>{task.title}</div>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                                                        <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                                            {task.project?.name || 'No project'}
+                                                        </div>
+                                                        <span className={`badge ${statusBadge(task.status)}`} style={{ fontSize: 10 }}>
+                                                            {task.status}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', padding: 12 }}>
+                                            No tasks today
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
             </div>
         );
     }

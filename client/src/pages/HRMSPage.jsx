@@ -82,16 +82,47 @@ export default function HRMSPage() {
 
     const checkIn = async () => {
         if (!isToday) return toast.error('Check-in is only allowed for today');
-        setSaving(true);
-        try {
-            const res = await api.post('/hrms/check-in');
-            setTs(res.data);
-            toast.success('Checked in');
-        } catch (err) {
-            toast.error(err.response?.data?.message || 'Unable to check in');
-        } finally {
-            setSaving(false);
+        
+        // Get user's location
+        if (!navigator.geolocation) {
+            return toast.error('Geolocation is not supported by your browser');
         }
+
+        setSaving(true);
+        
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                try {
+                    const res = await api.post('/hrms/check-in', {
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude
+                    });
+                    setTs(res.data);
+                    toast.success('Checked in successfully');
+                } catch (err) {
+                    toast.error(err.response?.data?.message || 'Unable to check in');
+                } finally {
+                    setSaving(false);
+                }
+            },
+            (error) => {
+                setSaving(false);
+                let errorMessage = 'Unable to get your location';
+                if (error.code === error.PERMISSION_DENIED) {
+                    errorMessage = 'Location permission denied. Please enable location access.';
+                } else if (error.code === error.POSITION_UNAVAILABLE) {
+                    errorMessage = 'Location information unavailable';
+                } else if (error.code === error.TIMEOUT) {
+                    errorMessage = 'Location request timed out';
+                }
+                toast.error(errorMessage);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            }
+        );
     };
 
     const checkOut = async () => {

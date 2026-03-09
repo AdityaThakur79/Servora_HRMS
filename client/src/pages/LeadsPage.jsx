@@ -225,7 +225,7 @@ export default function LeadsPage() {
                                 <th>Lead</th>
                                 <th>Company</th>
                                 <th>Status</th>
-                                <th>Owner</th>
+                                <th>Last Note</th>
                                 <th>Source</th>
                                 <th>Created</th>
                                 <th>Actions</th>
@@ -236,46 +236,66 @@ export default function LeadsPage() {
                                 <tr><td colSpan={7} style={{ textAlign: 'center', padding: 40 }}><div className="spinner" style={{ margin: 'auto' }} /></td></tr>
                             ) : rows.length === 0 ? (
                                 <tr><td colSpan={7}><div className="empty-state"><div className="empty-icon">📈</div><h3>No leads found</h3><p>Create a lead to start tracking conversions</p></div></td></tr>
-                            ) : rows.map((lead) => (
-                                <tr key={lead._id}>
-                                    <td>
-                                        <div style={{ fontWeight: 700 }}>{lead.fullName}</div>
-                                        {lead.email && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{lead.email}</div>}
-                                    </td>
-                                    <td style={{ color: 'var(--text-secondary)' }}>{lead.company || '—'}</td>
-                                    <td>
-                                        <select
-                                            className="form-select"
-                                            value={lead.status}
-                                            onChange={(e) => updateLeadStatus(lead, e.target.value)}
-                                            style={{ width: 160, minHeight: 34, padding: '6px 10px', fontSize: 13, lineHeight: 1.2 }}
-                                        >
-                                            <option value="new">New</option>
-                                            <option value="contacted">Contacted</option>
-                                            <option value="qualified">Qualified</option>
-                                            <option value="proposal">Proposal</option>
-                                            <option value="won">Won</option>
-                                            <option value="lost">Lost</option>
-                                        </select>
-                                    </td>
-                                    <td style={{ color: 'var(--text-secondary)' }}>{lead.assignedTo?.name || '—'}</td>
-                                    <td style={{ color: 'var(--text-secondary)' }}>{formatSource(lead.source)}</td>
-                                    <td style={{ color: 'var(--text-secondary)' }}>{new Date(lead.createdAt).toLocaleDateString()}</td>
-                                    <td>
-                                        <div style={{ display: 'flex', gap: 6 }}>
-                                            <button className="btn btn-ghost btn-icon" onClick={() => navigate(`/leads/${lead._id}`)} title="View">
-                                                <HiOutlineEye />
-                                            </button>
-                                            <button className="btn btn-ghost btn-icon" onClick={() => openEdit(lead)} title="Edit">
-                                                ✎
-                                            </button>
-                                            <button className="btn btn-danger btn-icon" onClick={() => handleDelete(lead._id)} title="Delete">
-                                                <HiOutlineTrash />
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
+                            ) : rows.map((lead) => {
+                                const lastNote = lead.notes?.length > 0 ? lead.notes[0].text : (lead.description || '');
+                                const noteLimit = 40;
+                                const truncated = lastNote.length > noteLimit ? lastNote.slice(0, noteLimit) + '…' : lastNote;
+
+                                return (
+                                    <tr key={lead._id}>
+                                        <td>
+                                            <div style={{ fontWeight: 700 }}>{lead.fullName}</div>
+                                            {lead.email && <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{lead.email}</div>}
+                                        </td>
+                                        <td style={{ color: 'var(--text-secondary)' }}>{lead.company || '—'}</td>
+                                        <td>
+                                            <select
+                                                className="form-select"
+                                                value={lead.status}
+                                                onChange={(e) => updateLeadStatus(lead, e.target.value)}
+                                                style={{ width: 160, minHeight: 34, padding: '6px 10px', fontSize: 13, lineHeight: 1.2 }}
+                                            >
+                                                <option value="new">New</option>
+                                                <option value="contacted">Contacted</option>
+                                                <option value="qualified">Qualified</option>
+                                                <option value="proposal">Proposal</option>
+                                                <option value="won">Won</option>
+                                                <option value="lost">Lost</option>
+                                            </select>
+                                        </td>
+                                        <td style={{ maxWidth: 200, position: 'relative' }}>
+                                            {lastNote ? (
+                                                <span
+                                                    className="note-cell-truncated"
+                                                    style={{ fontSize: 13, color: 'var(--text-secondary)', cursor: 'default', display: 'inline-block', position: 'relative' }}
+                                                >
+                                                    {truncated}
+                                                    {lastNote.length > noteLimit && (
+                                                        <span className="note-cell-tooltip">{lastNote}</span>
+                                                    )}
+                                                </span>
+                                            ) : (
+                                                <span style={{ color: 'var(--text-muted)', fontSize: 13 }}>—</span>
+                                            )}
+                                        </td>
+                                        <td style={{ color: 'var(--text-secondary)' }}>{formatSource(lead.source)}</td>
+                                        <td style={{ color: 'var(--text-secondary)' }}>{new Date(lead.createdAt).toLocaleDateString()}</td>
+                                        <td>
+                                            <div style={{ display: 'flex', gap: 6 }}>
+                                                <button className="btn btn-ghost btn-icon" onClick={() => navigate(`/leads/${lead._id}`)} title="View">
+                                                    <HiOutlineEye />
+                                                </button>
+                                                <button className="btn btn-ghost btn-icon" onClick={() => openEdit(lead)} title="Edit">
+                                                    ✎
+                                                </button>
+                                                <button className="btn btn-danger btn-icon" onClick={() => handleDelete(lead._id)} title="Delete">
+                                                    <HiOutlineTrash />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>
@@ -376,6 +396,34 @@ export default function LeadsPage() {
                     </div>
                 </div>
             )}
+            <style>{`
+                .note-cell-truncated {
+                    position: relative;
+                }
+                .note-cell-tooltip {
+                    display: none;
+                    position: absolute;
+                    bottom: calc(100% + 8px);
+                    left: 0;
+                    z-index: 100;
+                    background: var(--accent-secondary);
+                    color: #FFF7F3;
+                    padding: 10px 14px;
+                    border-radius: 10px;
+                    font-size: 12px;
+                    font-weight: 500;
+                    line-height: 1.5;
+                    max-width: 320px;
+                    min-width: 180px;
+                    white-space: pre-wrap;
+                    word-break: break-word;
+                    box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+                    pointer-events: none;
+                }
+                .note-cell-truncated:hover .note-cell-tooltip {
+                    display: block;
+                }
+            `}</style>
         </div>
     );
 }

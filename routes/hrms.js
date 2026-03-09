@@ -58,13 +58,56 @@ router.get('/day', asyncHandler(async (req, res) => {
     res.json(await populateTimeSheet(ts));
 }));
 
+// Helper function to calculate distance between two coordinates (Haversine formula)
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371e3; // Earth's radius in meters
+    const φ1 = lat1 * Math.PI / 180;
+    const φ2 = lat2 * Math.PI / 180;
+    const Δφ = (lat2 - lat1) * Math.PI / 180;
+    const Δλ = (lon2 - lon1) * Math.PI / 180;
+
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c; // Distance in meters
+};
+
 // POST /api/hrms/check-in
+// Body: { latitude, longitude }
 router.post('/check-in', asyncHandler(async (req, res) => {
     const ts = await getOrCreateToday(req.user._id);
     if (ts.checkInAt && !ts.checkOutAt) {
         res.status(400);
         throw new Error('Already checked in');
     }
+
+    // Validate location if office coordinates are set
+    const officeLatitude = process.env.OFFICE_LATITUDE;
+    const officeLongitude = process.env.OFFICE_LONGITUDE;
+    
+    if (officeLatitude && officeLongitude) {
+        const { latitude, longitude } = req.body;
+        
+        if (!latitude || !longitude) {
+            res.status(400);
+            throw new Error('Location is required for check-in');
+        }
+
+        const distance = calculateDistance(
+            parseFloat(officeLatitude),
+            parseFloat(officeLongitude),
+            parseFloat(latitude),
+            parseFloat(longitude)
+        );
+
+        if (distance > 200) {
+            res.status(403);
+            throw new Error(`You must be within 200m of the office to check in. Current distance: ${Math.round(distance)}m`);
+        }
+    }
+
     ts.checkInAt = new Date();
     ts.checkOutAt = null;
     await ts.save();
@@ -82,6 +125,41 @@ router.post('/check-out', asyncHandler(async (req, res) => {
         res.status(400);
         throw new Error('Already checked out');
     }
+
+    // Validate that timeline is filled (all hours between check-in and now have work blocks)
+    const checkInTime = new Date(ts.checkInAt);
+    const now = new Date();
+    const hoursWorked = Math.floor((now - checkInTime) / (1000 * 60 * 60));
+    
+    if (hoursWorked > 0 && ts.workBlocks.length === 0) {
+        res.status(400);
+        throw new Error('Please log your work hours before checking out');
+    }
+
+    // Check if all hours are filled
+    const filledHours = new Set();
+    ts.workBlocks.forEach(block => {
+        const blockStart = new Date(block.startAt);
+        const blockEnd = new Date(block.endAt);
+        const blockHours = Math.ceil((blockEnd - blockStart) / (1000 * 60 * 60));
+        for (let i = 0; i < blockHours; i++) {
+            const hour = new Date(blockStart.getTime() + i * 60 * 60 * 1000);
+            filledHours.add(Math.floor(hour.getTime() / (1000 * 60 * 60)));
+        }
+    });
+
+    const requiredHours = new Set();
+    for (let i = 0; i < hoursWorked; i++) {
+        const hour = new Date(checkInTime.getTime() + i * 60 * 60 * 1000);
+        requiredHours.add(Math.floor(hour.getTime() / (1000 * 60 * 60)));
+    }
+
+    const missingHours = [...requiredHours].filter(h => !filledHours.has(h));
+    if (missingHours.length > 0) {
+        res.status(400);
+        throw new Error('Please fill all hours in your timeline before checking out');
+    }
+
     ts.checkOutAt = new Date();
     await ts.save();
     res.status(200).json(await populateTimeSheet(ts));
@@ -349,6 +427,80 @@ router.get('/reports/monthly.csv', authorize('admin'), asyncHandler(async (req, 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.status(200).send(lines.join('\n'));
+}));
+
+// GET /api/hrms/not-checked-out
+// Returns list of users who checked in today but haven't checked out
+router.get('/not-checked-out', asyncHandler(async (req, res) => {
+    const today = toDayKey(new Date());
+    
+    const timesheets = await TimeSheet.find({
+        day: today,
+        checkInAt: { $exists: true, $ne: null },
+        checkOutAt: null
+    }).populate('user', 'name email jobTitle avatar');
+
+    const notCheckedOut = timesheets.map(ts => ({
+        user: ts.user,
+        checkInAt: ts.checkInAt,
+        workedMinutes: ts.workBlocks.reduce((sum, b) => sum + (b.minutes || 0), 0)
+    }));
+
+    res.json(notCheckedOut);
+}));
+
+// GET /api/hrms/team-tasks-today
+// Returns today's tasks for all team members
+router.get('/team-tasks-today', asyncHandler(async (req, res) => {
+    const Task = require('../models/Task');
+    const User = require('../models/User');
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Get all users
+    const users = await User.find({ isActive: true }).select('name email jobTitle avatar');
+
+    // Get today's tasks for all users
+    const tasks = await Task.find({
+        dueDate: { $gte: today, $lt: tomorrow }
+    }).populate('assignedTo', 'name email')
+      .populate('project', 'name');
+
+    // Group tasks by user
+    const tasksByUser = {};
+    users.forEach(user => {
+        tasksByUser[user._id.toString()] = {
+            user: {
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+                jobTitle: user.jobTitle,
+                avatar: user.avatar
+            },
+            tasks: []
+        };
+    });
+
+    tasks.forEach(task => {
+        if (task.assignedTo) {
+            const userId = task.assignedTo._id.toString();
+            if (tasksByUser[userId]) {
+                tasksByUser[userId].tasks.push({
+                    _id: task._id,
+                    title: task.title,
+                    status: task.status,
+                    priority: task.priority,
+                    project: task.project,
+                    dueDate: task.dueDate
+                });
+            }
+        }
+    });
+
+    res.json(Object.values(tasksByUser));
 }));
 
 module.exports = router;

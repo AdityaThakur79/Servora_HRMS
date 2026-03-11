@@ -54,6 +54,8 @@ router.get('/', asyncHandler(async (req, res) => {
     const [rows, total] = await Promise.all([
         Lead.find(filter)
             .populate('assignedTo', 'name email jobTitle role')
+            .populate('salesOwner', 'name email jobTitle')
+            .populate('createdBy', 'name email')
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit),
@@ -88,14 +90,7 @@ router.get('/stats', asyncHandler(async (req, res) => {
 
     res.json({
         total,
-        byStatus: {
-            new: byStatus.new || 0,
-            contacted: byStatus.contacted || 0,
-            qualified: byStatus.qualified || 0,
-            proposal: byStatus.proposal || 0,
-            won: byStatus.won || 0,
-            lost: byStatus.lost || 0,
-        },
+        byStatus,
         conversionRate,
         lossRate,
     });
@@ -105,6 +100,7 @@ router.get('/stats', asyncHandler(async (req, res) => {
 router.get('/:id', asyncHandler(async (req, res) => {
     const lead = await Lead.findById(req.params.id)
         .populate('assignedTo', 'name email jobTitle role')
+        .populate('salesOwner', 'name email jobTitle')
         .populate('createdBy', 'name email')
         .populate('notes.createdBy', 'name email');
     if (!lead) {
@@ -128,14 +124,19 @@ router.post('/', asyncHandler(async (req, res) => {
         email: String(req.body.email || '').trim(),
         phone: String(req.body.phone || '').trim(),
         source: String(req.body.source || 'manual').trim(),
-        status: req.body.status || 'new',
+        status: req.body.status || 'new-lead',
         description: String(req.body.description || '').trim(),
         assignedTo: req.body.assignedTo || undefined,
+        salesOwner: req.body.salesOwner || undefined,
         createdBy: req.user._id,
     };
 
     const lead = await Lead.create(payload);
-    res.status(201).json(lead);
+    const populated = await Lead.findById(lead._id)
+        .populate('assignedTo', 'name email jobTitle role')
+        .populate('salesOwner', 'name email jobTitle')
+        .populate('createdBy', 'name email');
+    res.status(201).json(populated);
 }));
 
 // PUT /api/leads/:id
@@ -148,11 +149,20 @@ router.put('/:id', asyncHandler(async (req, res) => {
     if (update.source !== undefined) update.source = String(update.source || '').trim();
     if (update.description !== undefined) update.description = String(update.description || '').trim();
 
-    // Non-admins shouldn't change assignment
-    if (req.user.role !== 'admin') delete update.assignedTo;
+    // Non-admins shouldn't change assignment or sales owner
+    if (req.user.role !== 'admin') {
+        delete update.assignedTo;
+        delete update.salesOwner;
+    }
+
+    // Handle clearing of optional refs
+    if (update.assignedTo === '' || update.assignedTo === null) update.assignedTo = null;
+    if (update.salesOwner === '' || update.salesOwner === null) update.salesOwner = null;
 
     const lead = await Lead.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true })
-        .populate('assignedTo', 'name email jobTitle role');
+        .populate('assignedTo', 'name email jobTitle role')
+        .populate('salesOwner', 'name email jobTitle')
+        .populate('createdBy', 'name email');
     if (!lead) {
         res.status(404);
         throw new Error('Lead not found');
@@ -176,6 +186,7 @@ router.post('/:id/notes', asyncHandler(async (req, res) => {
     await lead.save();
     const populated = await Lead.findById(req.params.id)
         .populate('assignedTo', 'name email jobTitle role')
+        .populate('salesOwner', 'name email jobTitle')
         .populate('createdBy', 'name email')
         .populate('notes.createdBy', 'name email');
     res.status(201).json(populated);

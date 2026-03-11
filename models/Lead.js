@@ -9,10 +9,26 @@ const LeadSchema = new mongoose.Schema(
         source: { type: String, default: 'manual', trim: true }, // manual, referral, instagram, website, etc.
         status: {
             type: String,
-            enum: ['new', 'contacted', 'qualified', 'proposal', 'won', 'lost'],
-            default: 'new',
+            enum: [
+                // Legacy (kept for backward compat)
+                'new', 'qualified', 'proposal',
+                // Incoming
+                'new-lead', 'lead-captured', 'unassigned',
+                // Initial Contact
+                'attempted-contact', 'contacted', 'no-response', 'wrong-number',
+                // Qualification
+                'interested', 'not-interested', 'budget-issue', 'qualified-lead',
+                // Sales Stage
+                'meeting-scheduled', 'discovery-call-done', 'requirement-collected', 'proposal-sent', 'negotiation',
+                // Decision Stage
+                'follow-up-pending', 'waiting-for-client', 'decision-pending',
+                // Final
+                'won', 'lost', 'not-now',
+            ],
+            default: 'new-lead',
         },
         assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+        salesOwner: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
         description: { type: String, default: '' },
         notes: [
             {

@@ -4,28 +4,14 @@ import { HiOutlineArrowLeft } from 'react-icons/hi';
 import api from '../utils/api';
 import toast from 'react-hot-toast';
 import useAuthStore from '../store/authStore';
-
-const statusColors = {
-    new: 'badge-neutral',
-    contacted: 'badge-blue',
-    qualified: 'badge-yellow',
-    proposal: 'badge-orange',
-    won: 'badge-green',
-    lost: 'badge-red',
-};
+import { LEAD_PIPELINE_GROUPS, getStatusInfo, normalizeLegacyStatus } from '../utils/leadStatuses';
 
 const formatSource = (src) => {
     const s = String(src || '').trim().toLowerCase();
     const map = {
-        manual: 'Manual',
-        referral: 'Referral',
-        instagram: 'Instagram',
-        facebook: 'Facebook',
-        website: 'Website',
-        whatsapp: 'WhatsApp',
-        call: 'Call',
-        'meta-ads': 'Meta Ads',
-        other: 'Other',
+        manual: 'Manual', referral: 'Referral', instagram: 'Instagram',
+        facebook: 'Facebook', website: 'Website', whatsapp: 'WhatsApp',
+        call: 'Call', 'meta-ads': 'Meta Ads', other: 'Other',
     };
     return map[s] || (src || 'Manual');
 };
@@ -130,8 +116,6 @@ export default function LeadDetailPage() {
         return Math.max(0, Math.floor(ms / (1000 * 60 * 60 * 24)));
     }, [lead.createdAt]);
 
-    const pipeline = ['new', 'contacted', 'qualified', 'proposal', 'won', 'lost'];
-
     return (
         <div className="fade-in lead-detail-page">
             <div className="page-header">
@@ -144,7 +128,12 @@ export default function LeadDetailPage() {
                         <div className="lead-headline">
                             <div className="lead-title">
                                 <h2 style={{ margin: 0 }}>{lead.fullName}</h2>
-                                <span className={`badge ${statusColors[lead.status]}`}>{lead.status}</span>
+                                <span style={{
+                                    display: 'inline-block', padding: '3px 10px', borderRadius: 999,
+                                    fontSize: 11, fontWeight: 700,
+                                    color: getStatusInfo(lead.status).color,
+                                    background: getStatusInfo(lead.status).bg,
+                                }}>{getStatusInfo(lead.status).label}</span>
                             </div>
                             <div className="lead-subtitle">
                                 <span style={{ fontWeight: 600 }}>{lead.company || '—'}</span>
@@ -156,7 +145,8 @@ export default function LeadDetailPage() {
                                 {lead.email && <span className="chip">Email: {lead.email}</span>}
                                 {lead.phone && <span className="chip">Phone: {lead.phone}</span>}
                                 <span className="chip">Source: {formatSource(lead.source)}</span>
-                                <span className="chip">Owner: {lead.assignedTo?.name || '—'}</span>
+                                <span className="chip">Assigned: {lead.assignedTo?.name || '—'}</span>
+                                <span className="chip">Sales Owner: {lead.salesOwner?.name || '—'}</span>
                             </div>
                         </div>
                     </div>
@@ -180,20 +170,32 @@ export default function LeadDetailPage() {
                         </div>
                         <div className="lead-pipeline">
                             <div className="section-label" style={{ marginBottom: 8 }}>Pipeline</div>
-                            <div className="pipeline-steps">
-                                {pipeline.map((s) => (
-                                    <button
-                                        key={s}
-                                        type="button"
-                                        className={`pipeline-step ${lead.status === s ? 'active' : ''}`}
-                                        disabled={saving}
-                                        onClick={() => updateLead({ status: s })}
-                                        title="Update lead status"
-                                    >
-                                        {s}
-                                    </button>
-                                ))}
-                            </div>
+                            {LEAD_PIPELINE_GROUPS.map((group) => (
+                                <div key={group.label} style={{ marginBottom: 12 }}>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: group.color, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                        {group.label}
+                                    </div>
+                                    <div className="pipeline-steps">
+                                        {group.statuses.map((s) => {
+                                            const info = getStatusInfo(s);
+                                            const isActive = normalizeLegacyStatus(lead.status) === s;
+                                            return (
+                                                <button
+                                                    key={s}
+                                                    type="button"
+                                                    className={`pipeline-step ${isActive ? 'active' : ''}`}
+                                                    disabled={saving}
+                                                    onClick={() => updateLead({ status: s })}
+                                                    title={`Set to ${info.label}`}
+                                                    style={isActive ? { background: info.color, borderColor: info.color, color: '#fff' } : {}}
+                                                >
+                                                    {info.label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ))}
                             <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 8 }}>
                                 Click a stage to update status.
                             </p>
@@ -212,24 +214,41 @@ export default function LeadDetailPage() {
                             <h3 className="card-title">Assignment</h3>
                         </div>
                         {isAdmin ? (
-                            <div className="form-group" style={{ marginBottom: 0 }}>
-                                <label className="form-label">Assign owner</label>
-                                <select
-                                    className="form-select"
-                                    value={lead.assignedTo?._id || ''}
-                                    disabled={saving}
-                                    onChange={(e) => updateLead({ assignedTo: e.target.value || null })}
-                                >
-                                    <option value="">Unassigned</option>
-                                    {users.map((u) => (
-                                        <option key={u._id} value={u._id}>{u.name}</option>
-                                    ))}
-                                </select>
-                            </div>
+                            <>
+                                <div className="form-group" style={{ marginBottom: 12 }}>
+                                    <label className="form-label">Assigned To</label>
+                                    <select
+                                        className="form-select"
+                                        value={lead.assignedTo?._id || ''}
+                                        disabled={saving}
+                                        onChange={(e) => updateLead({ assignedTo: e.target.value || null })}
+                                    >
+                                        <option value="">Unassigned</option>
+                                        {users.map((u) => (
+                                            <option key={u._id} value={u._id}>{u.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="form-group" style={{ marginBottom: 0 }}>
+                                    <label className="form-label">Sales Owner</label>
+                                    <select
+                                        className="form-select"
+                                        value={lead.salesOwner?._id || ''}
+                                        disabled={saving}
+                                        onChange={(e) => updateLead({ salesOwner: e.target.value || null })}
+                                    >
+                                        <option value="">None</option>
+                                        {users.map((u) => (
+                                            <option key={u._id} value={u._id}>{u.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </>
                         ) : (
-                            <p style={{ color: 'var(--text-secondary)' }}>
-                                Only admin can change the owner of a lead.
-                            </p>
+                            <div style={{ color: 'var(--text-secondary)', fontSize: 14 }}>
+                                <p style={{ marginBottom: 6 }}>Assigned To: <span style={{ fontWeight: 700 }}>{lead.assignedTo?.name || '—'}</span></p>
+                                <p>Sales Owner: <span style={{ fontWeight: 700 }}>{lead.salesOwner?.name || '—'}</span></p>
+                            </div>
                         )}
                     </div>
                 </div>

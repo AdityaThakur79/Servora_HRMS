@@ -60,13 +60,6 @@ export default function OnboardingPage() {
         toast.success('Link copied to clipboard');
     };
 
-    const viewSubmission = async (id) => {
-        try {
-            const res = await api.get(`/onboarding/${id}`);
-            setViewForm(res.data);
-        } catch { toast.error('Unable to load'); }
-    };
-
     const statusBadge = (s) => {
         const map = {
             draft: { bg: 'rgba(107,114,128,0.12)', color: '#6b7280' },
@@ -115,7 +108,7 @@ export default function OnboardingPage() {
                                         <div style={{ display: 'flex', gap: 6 }}>
                                             <button className="btn btn-ghost btn-icon" onClick={() => copyLink(f.token)} title="Copy link"><HiOutlineClipboardCopy /></button>
                                             <a href={`${BASE_URL}/onboarding/fill/${f.token}`} target="_blank" rel="noreferrer" className="btn btn-ghost btn-icon" title="Open form"><HiOutlineExternalLink /></a>
-                                            {f.status === 'submitted' && <button className="btn btn-ghost btn-icon" onClick={() => viewSubmission(f._id)} title="View response"><HiOutlineEye /></button>}
+                                            <button className="btn btn-ghost btn-icon" onClick={() => navigate(`/onboarding/${f._id}`)} title="View details"><HiOutlineEye /></button>
                                             <button className="btn btn-danger btn-icon" onClick={() => deleteForm(f._id)} title="Delete"><HiOutlineTrash /></button>
                                         </div>
                                     </td>
@@ -155,77 +148,6 @@ export default function OnboardingPage() {
                 </div>
             )}
 
-            {/* View Submission Modal */}
-            {viewForm && (
-                <div className="modal-overlay" onClick={() => setViewForm(null)}>
-                    <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 700, maxHeight: '85vh', overflow: 'auto' }}>
-                        <div className="modal-header">
-                            <h3 className="modal-title">Submission: {viewForm.brandName || viewForm.clientName || '—'}</h3>
-                            <button onClick={() => setViewForm(null)} className="btn btn-ghost btn-icon">✕</button>
-                        </div>
-                        <div className="modal-body">
-                            <ViewSection title="Basic Brand Info" items={[
-                                ['Brand Name', viewForm.brandName], ['Founder', viewForm.founderName],
-                                ['Year Started', viewForm.yearStarted], ['Business Type', viewForm.businessType],
-                                ['Location', viewForm.brandLocation], ['Email', viewForm.contactEmail],
-                                ['Phone', viewForm.contactPhone], ['Website', viewForm.website],
-                            ]} />
-                            <ViewSection title="About the Brand" items={[
-                                ['Description', viewForm.brandDescription], ['Inspiration', viewForm.brandInspiration],
-                                ['Problem Solved', viewForm.problemSolved], ['Uniqueness', viewForm.uniqueness],
-                            ]} />
-                            <ViewSection title="Founder Story" items={[
-                                ['Journey', viewForm.founderJourney], ['Why Started', viewForm.whyStarted],
-                                ['Future Vision', viewForm.futureVision], ['Achievements', viewForm.achievements],
-                            ]} />
-                            <ViewSection title="Products / Services" items={[
-                                ['Products/Services', viewForm.productsServices], ['Best Sellers', viewForm.bestSellers],
-                                ['Signature Products', viewForm.signatureProducts], ['Price Range', viewForm.priceRange],
-                            ]} />
-                            <ViewSection title="Mission & Vision" items={[
-                                ['Mission', viewForm.brandMission], ['Vision', viewForm.brandVision], ['Values', viewForm.brandValues],
-                            ]} />
-                            <ViewSection title="Target Audience" items={[
-                                ['Ideal Customer', viewForm.idealCustomer], ['Age Group', viewForm.ageGroup],
-                                ['Audience Location', viewForm.audienceLocation], ['Typical Buyers', viewForm.typicalBuyers],
-                            ]} />
-                            <ViewItem label="Brand Personality" value={(viewForm.brandPersonality || []).join(', ')} />
-                            <ViewSection title="Competitors" items={[
-                                ['Competitors', viewForm.competitors], ['Inspiring Brands', viewForm.inspiringBrands],
-                            ]} />
-                            <ViewSection title="Social Media" items={[
-                                ['Instagram', viewForm.instagram], ['Facebook', viewForm.facebook],
-                                ['YouTube', viewForm.youtube], ['TikTok', viewForm.tiktok], ['Followers', viewForm.followerCount],
-                            ]} />
-                            <ViewItem label="Content Preferences" value={(viewForm.contentPreferences || []).join(', ')} />
-                            <ViewItem label="Campaign Goals" value={(viewForm.campaignGoals || []).join(', ')} />
-                            <ViewSection title="Additional" items={[
-                                ['Upcoming Events', viewForm.upcomingEvents], ['Special Message', viewForm.specialMessage],
-                                ['Additional Info', viewForm.additionalInfo],
-                            ]} />
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
-}
-
-function ViewSection({ title, items }) {
-    return (
-        <div style={{ marginBottom: 18 }}>
-            <div style={{ fontSize: 13, fontWeight: 800, color: 'var(--accent-primary)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>{title}</div>
-            {items.map(([label, val]) => <ViewItem key={label} label={label} value={val} />)}
-        </div>
-    );
-}
-
-function ViewItem({ label, value }) {
-    if (!value) return null;
-    return (
-        <div style={{ display: 'flex', gap: 8, marginBottom: 6, fontSize: 13 }}>
-            <span style={{ fontWeight: 700, minWidth: 140, color: 'var(--text-secondary)' }}>{label}:</span>
-            <span style={{ color: 'var(--text-primary)' }}>{value}</span>
         </div>
     );
 }

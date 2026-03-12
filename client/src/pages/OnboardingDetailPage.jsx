@@ -7,17 +7,17 @@ import toast from 'react-hot-toast';
 const BASE_URL = window.location.origin;
 
 const SECTIONS = [
-    { key: 'brand', icon: '🏢', label: 'Basic Brand Info', color: '#8b5cf6' },
-    { key: 'about', icon: '💡', label: 'About the Brand', color: '#3b82f6' },
-    { key: 'founder', icon: '👤', label: 'Founder Story', color: '#f59e0b' },
-    { key: 'products', icon: '📦', label: 'Products / Services', color: '#f97316' },
-    { key: 'mission', icon: '🎯', label: 'Mission & Vision', color: '#10b981' },
-    { key: 'audience', icon: '👥', label: 'Target Audience', color: '#6366f1' },
-    { key: 'personality', icon: '✨', label: 'Brand Personality', color: '#ec4899' },
-    { key: 'competitors', icon: '⚔️', label: 'Competitors', color: '#ef4444' },
-    { key: 'social', icon: '📱', label: 'Social Media', color: '#0ea5e9' },
-    { key: 'content', icon: '🎬', label: 'Content & Goals', color: '#14b8a6' },
-    { key: 'additional', icon: '📝', label: 'Additional Info', color: '#6b7280' },
+    { key: 'brand', icon: '', label: 'Basic Brand Info', color: '#423635' },
+    { key: 'about', icon: '', label: 'About the Brand', color: '#423635' },
+    { key: 'founder', icon: '', label: 'Founder Story', color: '#423635' },
+    { key: 'products', icon: '', label: 'Products / Services', color: '#423635' },
+    { key: 'mission', icon: '', label: 'Mission & Vision', color: '#423635' },
+    { key: 'audience', icon: '', label: 'Target Audience', color: '#423635' },
+    { key: 'personality', icon: '', label: 'Brand Personality', color: '#423635' },
+    { key: 'competitors', icon: '', label: 'Competitors', color: '#423635' },
+    { key: 'social', icon: '', label: 'Social Media', color: '#423635' },
+    { key: 'content', icon: '', label: 'Content & Goals', color: '#423635' },
+    { key: 'additional', icon: '', label: 'Additional Info', color: '#423635' },
 ];
 
 function getSectionData(form) {

@@ -18,6 +18,7 @@ import LeadDetailPage from './pages/LeadDetailPage';
 import HRMSPage from './pages/HRMSPage';
 import OnboardingPage from './pages/OnboardingPage';
 import OnboardingPublicPage from './pages/OnboardingPublicPage';
+import OnboardingDetailPage from './pages/OnboardingDetailPage';
 
 function App() {
     return (
@@ -174,6 +175,16 @@ function App() {
                         <RoleRoute allow={['admin']}>
                             <AppLayout>
                                 <OnboardingPage />
+                            </AppLayout>
+                        </RoleRoute>
+                    }
+                />
+                <Route
+                    path="/onboarding/:id"
+                    element={
+                        <RoleRoute allow={['admin']}>
+                            <AppLayout>
+                                <OnboardingDetailPage />
                             </AppLayout>
                         </RoleRoute>
                     }

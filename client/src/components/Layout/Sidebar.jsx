@@ -2,7 +2,8 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
     HiOutlineViewGridAdd, HiOutlineUsers, HiOutlineBriefcase,
     HiOutlineClipboardList, HiOutlineDocumentText, HiOutlineTicket,
-    HiOutlineCog, HiOutlineLogout, HiOutlineChartBar, HiOutlineClock
+    HiOutlineCog, HiOutlineLogout, HiOutlineChartBar, HiOutlineClock,
+    HiOutlineClipboardCheck
 } from 'react-icons/hi';
 import { MdOutlineSpaceDashboard } from 'react-icons/md';
 import useAuthStore from '../../store/authStore';
@@ -15,6 +16,7 @@ const navLinks = [
     { to: '/projects', icon: <HiOutlineBriefcase />, label: 'Projects' },
     { to: '/tasks', icon: <HiOutlineClipboardList />, label: 'Tasks' },
     { to: '/hrms', icon: <HiOutlineClock />, label: 'HRMS' },
+    { to: '/onboarding', icon: <HiOutlineClipboardCheck />, label: 'Onboarding', roles: ['admin'] },
     { divider: 'Finance' },
     { to: '/invoices', icon: <HiOutlineDocumentText />, label: 'Invoices', roles: ['admin'] },
     { divider: 'Support' },

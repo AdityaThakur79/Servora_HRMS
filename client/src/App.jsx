@@ -16,6 +16,8 @@ import SettingsPage from './pages/SettingsPage';
 import LeadsPage from './pages/LeadsPage';
 import LeadDetailPage from './pages/LeadDetailPage';
 import HRMSPage from './pages/HRMSPage';
+import OnboardingPage from './pages/OnboardingPage';
+import OnboardingPublicPage from './pages/OnboardingPublicPage';
 
 function App() {
     return (
@@ -37,6 +39,7 @@ function App() {
             <Routes>
                 {/* Public */}
                 <Route path="/login" element={<LoginPage />} />
+                <Route path="/onboarding/fill/:token" element={<OnboardingPublicPage />} />
 
                 {/* Protected – wrapped in AppLayout */}
                 <Route
@@ -163,6 +166,16 @@ function App() {
                                 <SettingsPage />
                             </AppLayout>
                         </ProtectedRoute>
+                    }
+                />
+                <Route
+                    path="/onboarding"
+                    element={
+                        <RoleRoute allow={['admin']}>
+                            <AppLayout>
+                                <OnboardingPage />
+                            </AppLayout>
+                        </RoleRoute>
                     }
                 />
 

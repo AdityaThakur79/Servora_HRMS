@@ -28,6 +28,7 @@ app.use('/api/leads', require('./routes/leads'));
 app.use('/api/hrms', require('./routes/hrms'));
 app.use('/api/users', require('./routes/users'));
 app.use('/api/dashboard', require('./routes/dashboard'));
+app.use('/api/onboarding', require('./routes/onboarding'));
 
 // Health check
 app.get('/api/health', (req, res) => res.json({ status: 'OK', message: 'Servora API running' }));

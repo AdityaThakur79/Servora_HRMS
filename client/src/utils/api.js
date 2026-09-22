@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const api = axios.create({
     // baseURL: 'http://localhost:5001/api',
-    baseURL: 'https://servora-hrms.onrender.com/api',
+    baseURL: 'https://servora-hrms-86cu.onrender.com/api',
 });
 
 // Attach JWT token from localStorage to every request
